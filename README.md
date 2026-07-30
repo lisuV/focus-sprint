@@ -60,6 +60,20 @@ All endpoints are JSON over the same origin as the frontend.
 | GET    | `/api/state`   | Fetch the signed-in user's tasks/streak/sprint state |
 | PUT    | `/api/state`   | Replace the signed-in user's saved state        |
 
+## Deployment
+
+A [`render.yaml`](render.yaml) Blueprint is included for one-click deploy to
+[Render](https://render.com)'s free web service tier: connect this repo from
+the Render dashboard (New + → Blueprint) and it auto-configures the build
+(`rootDir: server`, `npm install`, `npm start`) and generates a random
+`SESSION_SECRET`.
+
+**Free tier caveat:** Render's free web services have an ephemeral disk, so
+`server/focus-sprint.db` is wiped on every redeploy and whenever the service
+spins down from inactivity. That's fine for a demo link, but if you want
+accounts to actually persist, either upgrade to a Render disk or swap SQLite
+for a free hosted Postgres (e.g. [Neon](https://neon.tech)).
+
 ## Notes
 
 - The SQLite database file (`server/focus-sprint.db`) is created automatically
