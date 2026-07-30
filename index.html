@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Sprint</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Focus Sprint</h1>
+      <div class="header-right">
+        <div class="streak" id="streak">
+          <span class="flame">🔥</span>
+          <span id="streakCount">0</span>
+          <span class="streak-label">day streak</span>
+        </div>
+        <div class="auth-area" id="authArea">
+          <button class="link-btn" id="signInBtn">Sign in</button>
+          <button class="link-btn" id="signUpBtn">Sign up</button>
+        </div>
+        <div class="auth-area account-area hidden" id="accountArea">
+          <span class="account-email" id="accountEmail"></span>
+          <button class="link-btn" id="logOutBtn">Log out</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="sync-banner hidden" id="syncBanner"></div>
+
+    <div class="modal-backdrop hidden" id="authModal">
+      <div class="modal">
+        <div class="modal-tabs">
+          <button class="modal-tab active" data-tab="signin">Sign in</button>
+          <button class="modal-tab" data-tab="signup">Sign up</button>
+        </div>
+        <form id="authForm">
+          <input type="email" id="authEmail" placeholder="Email" autocomplete="email" required>
+          <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" required minlength="6">
+          <p class="auth-error hidden" id="authError"></p>
+          <button type="submit" class="btn primary" id="authSubmit">Sign in</button>
+        </form>
+        <button class="modal-close" id="authModalClose">&times;</button>
+      </div>
+    </div>
+
+    <main>
+      <section class="timer-card" id="timerCard">
+        <div class="mode-tabs">
+          <button class="mode-tab active" data-mode="work">Focus</button>
+          <button class="mode-tab" data-mode="short">Short Break</button>
+          <button class="mode-tab" data-mode="long">Long Break</button>
+        </div>
+
+        <div class="ring-wrap">
+          <svg class="ring" viewBox="0 0 220 220">
+            <circle class="ring-bg" cx="110" cy="110" r="100"></circle>
+            <circle class="ring-progress" id="ringProgress" cx="110" cy="110" r="100"></circle>
+          </svg>
+          <div class="time-display">
+            <span id="timeLabel">25:00</span>
+            <span class="current-task" id="currentTaskLabel">No task selected</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn secondary" id="resetBtn" title="Reset">↺</button>
+          <button class="btn primary" id="startBtn">Start</button>
+          <button class="btn secondary" id="skipBtn" title="Skip">⏭</button>
+        </div>
+
+        <div class="sprint-count" id="sprintCount">0 sprints today</div>
+      </section>
+
+      <section class="tasks-card">
+        <h2>Tasks</h2>
+        <form id="taskForm" class="task-form">
+          <input type="text" id="taskInput" placeholder="What are you working on?" autocomplete="off" maxlength="80">
+          <button type="submit" class="btn primary small">Add</button>
+        </form>
+        <ul id="taskList" class="task-list"></ul>
+        <p class="empty-hint" id="emptyHint">Add a task, then click it to make it the active focus.</p>
+      </section>
+    </main>
+
+    <div class="celebration" id="celebration">
+      <div class="burst" id="burst"></div>
+      <div class="celebration-text" id="celebrationText">Sprint complete!</div>
+    </div>
+  </div>
+
+<script src="script.js"></script>
+</body>
+</html>
