@@ -64,22 +64,19 @@
     }
   }
 
-  let syncTimer = null;
-  function syncStateToServer() {
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(async () => {
-      try {
-        const res = await fetch("/api/state", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(state),
-        });
-        if (!res.ok) throw new Error("save failed");
-        showSyncBanner("", false);
-      } catch (e) {
-        showSyncBanner("Couldn't sync to your account — changes are only saved locally for now.", true);
-      }
-    }, 250);
+  async function syncStateToServer() {
+    try {
+      const res = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state),
+        keepalive: true,
+      });
+      if (!res.ok) throw new Error("save failed");
+      showSyncBanner("", false);
+    } catch (e) {
+      showSyncBanner("Couldn't sync to your account — changes are only saved locally for now.", true);
+    }
   }
 
   function showSyncBanner(message, isError) {
