@@ -10,10 +10,18 @@ Findings from a code review of the whole project (frontend + server).
    added — rate limiting alone covers the brute-force risk; revisit if this
    ever needs to be stricter.
 
-2. **Last-write-wins sync, no merge** — `PUT /api/state` replaces the entire
+2. ~~**Last-write-wins sync, no merge** — `PUT /api/state` replaces the entire
    state blob. Two tabs/devices open at once will silently clobber each
    other's tasks/streak/sprint count on save; no version check or diffing.
-   (`server/server.js`, `script.js`)
+   (`server/server.js`, `script.js`)~~ **Fixed**: added a `version` column
+   (optimistic concurrency) — `PUT /api/state` now requires the version the
+   client last read and rejects a stale write with 409 + the current server
+   state instead of overwriting it. Client adopts the fresher state and
+   shows a banner so the user knows their last change may not have saved.
+   Client saves are also chained sequentially so a single tab's own rapid
+   actions can't spuriously conflict with themselves. No true merge/diffing
+   was added — a detected conflict still means the losing write is dropped,
+   just no longer silently.
 
 3. **Weak password policy** — only a 6-character minimum, no complexity or
    breach checks. (`server/server.js:69-71`)

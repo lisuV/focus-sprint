@@ -182,29 +182,53 @@ app.get(
   "/api/state",
   requireAuth,
   asyncRoute(async (req, res) => {
-    const result = await pool.query("SELECT data FROM user_state WHERE user_id = $1", [
-      req.session.userId,
-    ]);
-    const data = result.rows[0] ? result.rows[0].data : DEFAULT_STATE;
-    res.json({ state: data });
+    const result = await pool.query(
+      "SELECT data, version FROM user_state WHERE user_id = $1",
+      [req.session.userId]
+    );
+    const row = result.rows[0];
+    res.json({ state: row ? row.data : DEFAULT_STATE, version: row ? row.version : 0 });
   })
 );
 
+// Optimistic concurrency: the client must send back the version it last
+// read. If another tab/device has saved since then, the version won't
+// match any row and we reject with 409 plus the current server state
+// instead of silently overwriting the other write (last-write-wins).
 app.put(
   "/api/state",
   requireAuth,
   asyncRoute(async (req, res) => {
-    const state = req.body;
+    const { state, version } = req.body || {};
     if (!state || typeof state !== "object" || !Array.isArray(state.tasks)) {
       return res.status(400).json({ error: "Malformed state payload" });
     }
-    await pool.query(
-      `INSERT INTO user_state (user_id, data, updated_at)
-       VALUES ($1, $2, now())
-       ON CONFLICT (user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
-      [req.session.userId, state]
+    if (typeof version !== "number") {
+      return res.status(400).json({ error: "Missing version" });
+    }
+
+    const result = await pool.query(
+      `UPDATE user_state
+       SET data = $1, version = version + 1, updated_at = now()
+       WHERE user_id = $2 AND version = $3
+       RETURNING version`,
+      [state, req.session.userId, version]
     );
-    res.status(204).end();
+
+    if (result.rows.length === 0) {
+      const current = await pool.query(
+        "SELECT data, version FROM user_state WHERE user_id = $1",
+        [req.session.userId]
+      );
+      const row = current.rows[0];
+      return res.status(409).json({
+        error: "State was updated elsewhere",
+        state: row ? row.data : DEFAULT_STATE,
+        version: row ? row.version : 0,
+      });
+    }
+
+    res.json({ version: result.rows[0].version });
   })
 );
 

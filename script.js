@@ -38,6 +38,7 @@
   };
 
   let state = loadState();
+  let stateVersion = 0;
   let session = { loggedIn: false, user: null };
   let authMode = "signin";
 
@@ -58,21 +59,44 @@
   function saveState() {
     state.activeTaskId = activeTaskId;
     if (session.loggedIn) {
-      syncStateToServer();
+      // Chain onto any in-flight sync so rapid actions send their PUTs
+      // sequentially, each with the version the previous one resolved to —
+      // otherwise two immediate saves from this same tab could both read
+      // the same stale version and spuriously conflict with each other.
+      syncChain = syncChain.then(syncStateToServer);
     } else {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
   }
+
+  let syncChain = Promise.resolve();
 
   async function syncStateToServer() {
     try {
       const res = await fetch("/api/state", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
+        body: JSON.stringify({ state, version: stateVersion }),
         keepalive: true,
       });
+
+      if (res.status === 409) {
+        const data = await res.json();
+        state = data.state;
+        stateVersion = data.version;
+        activeTaskId = state.activeTaskId || null;
+        ensureTodayCounters();
+        render();
+        showSyncBanner(
+          "Synced from another tab or device — your last change here may not have saved. Redo it if it's missing.",
+          true
+        );
+        return;
+      }
+
       if (!res.ok) throw new Error("save failed");
+      const data = await res.json();
+      stateVersion = data.version;
       showSyncBanner("", false);
     } catch (e) {
       showSyncBanner("Couldn't sync to your account — changes are only saved locally for now.", true);
@@ -379,10 +403,12 @@
 
     if (authMode === "signup" && body.initialState) {
       state = body.initialState;
+      stateVersion = 1; // matches the DB column default set on signup
     } else {
       const stateRes = await fetch("/api/state");
       const stateData = await stateRes.json();
       state = stateData.state;
+      stateVersion = stateData.version;
     }
     activeTaskId = state.activeTaskId || null;
     ensureTodayCounters();
@@ -394,6 +420,7 @@
     await fetch("/api/logout", { method: "POST" }).catch(() => {});
     setSession(null);
     state = loadState();
+    stateVersion = 0;
     activeTaskId = state.activeTaskId || null;
     ensureTodayCounters();
     pause();
@@ -409,6 +436,7 @@
       const stateRes = await fetch("/api/state");
       const stateData = await stateRes.json();
       state = stateData.state;
+      stateVersion = stateData.version;
       activeTaskId = state.activeTaskId || null;
       ensureTodayCounters();
       render();

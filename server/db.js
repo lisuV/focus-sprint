@@ -25,8 +25,12 @@ async function initSchema() {
     CREATE TABLE IF NOT EXISTS user_state (
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       data JSONB NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Migration for tables created before optimistic-concurrency support.
+    ALTER TABLE user_state ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
   `);
 }
 
