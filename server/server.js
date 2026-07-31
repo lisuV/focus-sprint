@@ -3,11 +3,17 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const crypto = require("crypto");
 const express = require("express");
 const session = require("express-session");
+const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
 const { pool, initSchema } = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 8420;
+
+// Render (and most PaaS hosts) sit behind a reverse proxy, so req.ip would
+// otherwise always resolve to the proxy's address — trusting the first hop
+// lets express-rate-limit key on the real client IP from X-Forwarded-For.
+app.set("trust proxy", 1);
 
 const DEFAULT_STATE = {
   tasks: [],
@@ -51,10 +57,30 @@ function asyncRoute(handler) {
   return (req, res, next) => handler(req, res, next).catch(next);
 }
 
+// Brute-force protection: cap auth attempts per IP. Login gets a tighter
+// window since credential-stuffing/guessing targets it directly; signup is
+// capped mainly to stop mass account creation.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts. Please try again in a few minutes." },
+});
+
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many accounts created from this address. Please try again later." },
+});
+
 // ---------- Auth routes ----------
 
 app.post(
   "/api/signup",
+  signupLimiter,
   asyncRoute(async (req, res) => {
     const { email, password, initialState } = req.body || {};
 
@@ -104,6 +130,7 @@ app.post(
 
 app.post(
   "/api/login",
+  loginLimiter,
   asyncRoute(async (req, res) => {
     const { email, password } = req.body || {};
     if (!isValidEmail(email) || typeof password !== "string") {
