@@ -1,9 +1,8 @@
 node_modules/
 
-# SQLite database (per-deployment data, not source)
-server/*.db
-server/*.db-shm
-server/*.db-wal
+# Local environment config (DATABASE_URL, etc.)
+.env
+server/.env
 
 # Logs
 npm-debug.log*
