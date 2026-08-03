@@ -17,7 +17,8 @@ account sync — built as a single-page app with a small Node/Express backend.
 
 - **Frontend:** vanilla HTML / CSS / JavaScript, no build step
 - **Backend:** [Express](https://expressjs.com/) + [PostgreSQL](https://www.postgresql.org/) (via [`pg`](https://node-postgres.com/))
-- **Auth:** session cookies (`express-session`) + password hashing (`bcryptjs`)
+- **Auth:** session cookies (`express-session`, backed by Postgres via
+  `connect-pg-simple`) + password hashing (`bcryptjs`)
 
 ## Getting started
 
@@ -79,12 +80,14 @@ tier's spin-down-on-idle behavior.
 
 ## Notes
 
-- The database schema (`users`, `user_state` tables) is created automatically
-  on first run if it doesn't already exist.
-- The session secret is regenerated on every server restart if `SESSION_SECRET`
-  isn't set, which logs everyone out. Render's Blueprint sets a persistent one
-  automatically; for local dev, add your own to `.env` if you want sessions to
-  survive restarts.
+- The database schema (`users`, `user_state`, `session` tables) is created
+  automatically on first run if it doesn't already exist.
+- `SESSION_SECRET` is required — the server refuses to start without it
+  (generate one with `openssl rand -hex 32`). This isn't optional hardening:
+  sessions are stored in Postgres via `connect-pg-simple` and survive server
+  restarts/redeploys, but only if the secret used to sign the session cookie
+  stays the same between boots. Render's Blueprint sets a persistent one
+  automatically.
 
 ## License
 

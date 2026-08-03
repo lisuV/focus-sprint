@@ -36,11 +36,20 @@ Findings from a code review of the whole project (frontend + server).
    Existing accounts with shorter passwords are unaffected; this only
    applies to new signups.
 
-4. **Session secret is random per boot** — falls back to
+4. ~~**Session secret is random per boot** — falls back to
    `crypto.randomBytes(32)` if `SESSION_SECRET` isn't set, so signed-in users
    get logged out on every restart. Documented in README, but worth
    double-checking `SESSION_SECRET` is actually set in any real deployment.
-   (`server/server.js:23`)
+   (`server/server.js:23`)~~ **Fixed**: the server now refuses to start at
+   all without `SESSION_SECRET` set (fail fast, same pattern as the
+   `DATABASE_URL` check in `db.js`), instead of silently degrading to a new
+   random secret each boot. While investigating this, found the fix as
+   originally scoped wouldn't have actually solved the stated symptom:
+   sessions used the default in-memory store, so they were wiped on every
+   restart regardless of secret stability. Added `connect-pg-simple` so
+   sessions are stored in Postgres and genuinely survive restarts now —
+   verified by signing in, restarting the server process, and confirming
+   the same session cookie still authenticates.
 
 5. **No tests** (frontend or backend). Streak/sprint logic has real edge
    cases that could regress silently:
