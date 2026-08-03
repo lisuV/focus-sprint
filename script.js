@@ -31,6 +31,7 @@
     authForm: document.getElementById("authForm"),
     authEmail: document.getElementById("authEmail"),
     authPassword: document.getElementById("authPassword"),
+    authPasswordHint: document.getElementById("authPasswordHint"),
     authError: document.getElementById("authError"),
     authSubmit: document.getElementById("authSubmit"),
     modalTabs: document.querySelectorAll(".modal-tab"),
@@ -371,6 +372,7 @@
     el.modalTabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === tab));
     el.authSubmit.textContent = tab === "signin" ? "Sign in" : "Sign up";
     el.authPassword.autocomplete = tab === "signin" ? "current-password" : "new-password";
+    el.authPasswordHint.classList.toggle("hidden", tab !== "signup");
     el.authError.classList.add("hidden");
     el.authForm.reset();
     el.authModal.classList.remove("hidden");

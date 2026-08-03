@@ -37,7 +37,8 @@
         </div>
         <form id="authForm">
           <input type="email" id="authEmail" placeholder="Email" autocomplete="email" required>
-          <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" required minlength="6">
+          <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" required minlength="8">
+          <p class="auth-hint hidden" id="authPasswordHint">At least 8 characters. Avoid common or previously breached passwords.</p>
           <p class="auth-error hidden" id="authError"></p>
           <button type="submit" class="btn primary" id="authSubmit">Sign in</button>
         </form>
