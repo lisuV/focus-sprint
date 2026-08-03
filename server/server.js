@@ -3,10 +3,19 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const crypto = require("crypto");
 const express = require("express");
 const session = require("express-session");
+const pgSession = require("connect-pg-simple")(session);
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
 const { pool, initSchema } = require("./db");
 const { COMMON_PASSWORDS } = require("./common-passwords");
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error(
+    "SESSION_SECRET is not set. Generate one (e.g. `openssl rand -hex 32`) and set it " +
+      "as an env var — without it, every server restart would silently generate a new " +
+      "secret and log out all signed-in users."
+  );
+}
 
 const app = express();
 const PORT = process.env.PORT || 8420;
@@ -27,8 +36,9 @@ const DEFAULT_STATE = {
 app.use(express.json());
 app.use(
   session({
+    store: new pgSession({ pool, tableName: "session", createTableIfMissing: true }),
     name: "focus_sprint_sid",
-    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
