@@ -186,6 +186,14 @@ h1 {
   width: 100%;
 }
 
+.auth-hint {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin: -4px 0 0;
+}
+
+.auth-hint.hidden { display: none; }
+
 .auth-error {
   color: var(--danger);
   font-size: 12px;

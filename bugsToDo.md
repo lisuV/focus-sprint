@@ -23,8 +23,18 @@ Findings from a code review of the whole project (frontend + server).
    was added — a detected conflict still means the losing write is dropped,
    just no longer silently.
 
-3. **Weak password policy** — only a 6-character minimum, no complexity or
-   breach checks. (`server/server.js:69-71`)
+3. ~~**Weak password policy** — only a 6-character minimum, no complexity or
+   breach checks. (`server/server.js:69-71`)~~ **Fixed**: minimum raised to
+   8 characters (NIST 800-63B recommendation — deliberately did *not* add
+   forced complexity rules like required symbols/uppercase, since current
+   guidance considers those counterproductive), added a max of 128, a local
+   blocklist of ~150 common/weak passwords (`server/common-passwords.js`,
+   no network needed), and a real breach check against the Have I Been
+   Pwned "Pwned Passwords" API using k-anonymity (only a 5-char hash prefix
+   is sent, never the password or full hash). The breach check fails open —
+   if the API is unreachable, signup isn't blocked by an unrelated outage.
+   Existing accounts with shorter passwords are unaffected; this only
+   applies to new signups.
 
 4. **Session secret is random per boot** — falls back to
    `crypto.randomBytes(32)` if `SESSION_SECRET` isn't set, so signed-in users

@@ -6,6 +6,7 @@ const session = require("express-session");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcryptjs");
 const { pool, initSchema } = require("./db");
+const { COMMON_PASSWORDS } = require("./common-passwords");
 
 const app = express();
 const PORT = process.env.PORT || 8420;
@@ -57,6 +58,47 @@ function asyncRoute(handler) {
   return (req, res, next) => handler(req, res, next).catch(next);
 }
 
+// Checks a password against the "Pwned Passwords" breach corpus using the
+// k-anonymity API: only the first 5 hex chars of the SHA-1 hash are sent, so
+// the real password (and even its full hash) never leaves this server. Fails
+// open — a network hiccup or API outage shouldn't block someone signing up.
+async function isPasswordPwned(password) {
+  const sha1 = crypto.createHash("sha1").update(password).digest("hex").toUpperCase();
+  const prefix = sha1.slice(0, 5);
+  const suffix = sha1.slice(5);
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return false;
+
+    const body = await res.text();
+    return body.split("\n").some((line) => line.split(":")[0].trim() === suffix);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function validatePassword(password) {
+  if (typeof password !== "string" || password.length < 8) {
+    return "Password must be at least 8 characters";
+  }
+  if (password.length > 128) {
+    return "Password must be under 128 characters";
+  }
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) {
+    return "That password is too common. Please choose a stronger one.";
+  }
+  if (await isPasswordPwned(password)) {
+    return "That password has appeared in a known data breach. Please choose a different one.";
+  }
+  return null;
+}
+
 // Brute-force protection: cap auth attempts per IP. Login gets a tighter
 // window since credential-stuffing/guessing targets it directly; signup is
 // capped mainly to stop mass account creation.
@@ -87,8 +129,9 @@ app.post(
     if (!isValidEmail(email)) {
       return res.status(400).json({ error: "Enter a valid email address" });
     }
-    if (typeof password !== "string" || password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    const passwordError = await validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
